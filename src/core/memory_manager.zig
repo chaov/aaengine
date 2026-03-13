@@ -111,12 +111,18 @@ pub const MemoryManager = struct {
         return ptr;
     }
 
-    pub fn deallocate(self: *MemoryManager, ptr: []u8) void {
+    pub fn deallocate(self: *MemoryManager, ptr: []u8, strategy: AllocStrategy) void {
         self.mutex.lock();
         defer self.mutex.unlock();
 
         const size = ptr.len;
-        self.allocator.free(ptr);
+        
+        switch (strategy) {
+            .pool => {},
+            .arena => {},
+            .heap => self.allocator.free(ptr),
+            .mmap => self.allocator.free(ptr),
+        }
 
         self.stats.total_freed += size;
         self.stats.current_usage -= size;
@@ -127,12 +133,24 @@ pub const MemoryManager = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
 
+        if (name.len == 0 or name.len > 256) {
+            return error.InvalidPoolName;
+        }
+
+        for (name) |c| {
+            if (c < 32 or c > 126) {
+                return error.InvalidPoolName;
+            }
+        }
+
         if (self.object_pools.get(name)) |pool| {
-            return @ptrCast(pool);
+            const typed_pool = @as(*ObjectPool(T), @ptrCast(@alignCast(pool)));
+            return typed_pool;
         }
 
         const pool = try ObjectPool(T).init(self.allocator, 16, 1024);
-        try self.object_pools.put(self.allocator.dupe(u8, name) catch return error.OutOfMemory, pool);
+        const name_copy = try self.allocator.dupe(u8, name);
+        try self.object_pools.put(name_copy, pool);
         return pool;
     }
 
@@ -146,11 +164,15 @@ pub const MemoryManager = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         _ = self.arena.reset(.retain_capacity);
+        self.stats.current_usage = 0;
     }
 
     pub fn deinit(self: *MemoryManager) void {
         var iter = self.object_pools.iterator();
         while (iter.next()) |entry| {
+            const pool = @as(*anyopaque, entry.value_ptr.*);
+            const typed_pool = @as(*ObjectPool(u8), @ptrCast(@alignCast(pool)));
+            typed_pool.deinit();
             self.allocator.free(entry.key_ptr.*);
         }
         self.object_pools.deinit();

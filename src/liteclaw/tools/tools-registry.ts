@@ -54,6 +54,59 @@ export class ToolsRegistry {
   }
 }
 
+function safeEvaluateMath(expression: string): number {
+  const sanitized = expression.trim();
+  
+  if (sanitized.length === 0) {
+    throw new Error('Empty expression');
+  }
+  
+  if (sanitized.length > 1000) {
+    throw new Error('Expression too long');
+  }
+  
+  const allowedChars = /^[0-9+\-*/().\s%]+$/;
+  if (!allowedChars.test(sanitized)) {
+    throw new Error('Invalid characters in expression');
+  }
+  
+  if (/[a-zA-Z_]/.test(sanitized)) {
+    throw new Error('Alphabetic characters not allowed');
+  }
+  
+  const tokens = sanitized.match(/(\d+\.?\d*|\.\d+|[+\-*/()%])/g);
+  if (!tokens || tokens.join('') !== sanitized.replace(/\s/g, '')) {
+    throw new Error('Invalid expression format');
+  }
+  
+  const numbers = sanitized.match(/\d+\.?\d+|\.\d+/g) || [];
+  for (const num of numbers) {
+    const value = parseFloat(num);
+    if (isNaN(value) || !isFinite(value)) {
+      throw new Error('Invalid number');
+    }
+    if (Math.abs(value) > 1e10) {
+      throw new Error('Number out of range');
+    }
+  }
+  
+  try {
+    const result = Function('"use strict"; return (' + sanitized + ')')();
+    
+    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+      throw new Error('Invalid result');
+    }
+    
+    if (Math.abs(result) > 1e10) {
+      throw new Error('Result out of range');
+    }
+    
+    return result;
+  } catch (error) {
+    throw new Error('Invalid mathematical expression');
+  }
+}
+
 export function createBuiltinTools(): Tool[] {
   return [
     {
@@ -78,7 +131,7 @@ export function createBuiltinTools(): Tool[] {
       ],
       handler: async (params) => {
         try {
-          const result = eval(params.expression as string);
+          const result = safeEvaluateMath(params.expression as string);
           return {
             id: crypto.randomUUID(),
             output: String(result)
