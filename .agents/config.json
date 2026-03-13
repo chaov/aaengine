@@ -1,0 +1,105 @@
+{
+  "agents": [
+    {
+      "id": "product-planner",
+      "name": "产品规划师",
+      "role": "负责产品规划和项目管理",
+      "description": "负责需求分析、产品规划、任务分解、进度跟踪和项目协调",
+      "capabilities": [
+        "需求分析和文档编写",
+        "产品功能规划",
+        "任务分解和优先级排序",
+        "项目进度跟踪",
+        "团队协调和沟通"
+      ],
+      "tools": ["read", "write", "question", "todowrite"]
+    },
+    {
+      "id": "architect",
+      "name": "架构设计师",
+      "role": "负责架构设计",
+      "description": "负责系统架构设计、技术选型、接口设计和模块划分",
+      "capabilities": [
+        "系统架构设计",
+        "技术栈选型",
+        "数据库设计",
+        "API接口设计",
+        "模块划分和依赖管理"
+      ],
+      "tools": ["read", "write", "glob", "grep", "bash"]
+    },
+    {
+      "id": "developer-1",
+      "name": "开发工程师1",
+      "role": "负责代码实现",
+      "description": "负责核心功能开发和代码实现",
+      "capabilities": [
+        "功能开发",
+        "代码编写",
+        "单元测试",
+        "Bug修复"
+      ],
+      "tools": ["read", "write", "edit", "glob", "grep", "bash"]
+    },
+    {
+      "id": "developer-2",
+      "name": "开发工程师2",
+      "role": "负责代码实现",
+      "description": "负责辅助功能开发和代码实现",
+      "capabilities": [
+        "功能开发",
+        "代码编写",
+        "单元测试",
+        "Bug修复"
+      ],
+      "tools": ["read", "write", "edit", "glob", "grep", "bash"]
+    },
+    {
+      "id": "qa-engineer",
+      "name": "QA工程师",
+      "role": "负责代码review和测试",
+      "description": "负责代码审查、测试执行和质量保证，测试通过后提交代码到GitHub",
+      "capabilities": [
+        "代码审查",
+        "测试用例编写",
+        "集成测试",
+        "质量保证",
+        "Git提交"
+      ],
+      "tools": ["read", "write", "edit", "glob", "grep", "bash"],
+      "post_review": {
+        "action": "git_commit",
+        "repository": "https://github.com/chaov/aaengine.git",
+        "branch": "main"
+      }
+    }
+  ],
+  "workflow": {
+    "stages": [
+      {
+        "name": "规划阶段",
+        "agents": ["product-planner"],
+        "output": "产品需求文档"
+      },
+      {
+        "name": "设计阶段",
+        "agents": ["architect"],
+        "input": "产品需求文档",
+        "output": "架构设计文档"
+      },
+      {
+        "name": "开发阶段",
+        "agents": ["developer-1", "developer-2"],
+        "input": "架构设计文档",
+        "output": "实现代码",
+        "parallel": true
+      },
+      {
+        "name": "测试阶段",
+        "agents": ["qa-engineer"],
+        "input": "实现代码",
+        "output": "测试报告和代码提交"
+      }
+    ]
+  }
+}
